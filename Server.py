@@ -4,7 +4,7 @@ import requests
 from tkinter import Tk, Text, Scrollbar, Entry, Button, END
 import datetime
 
-# —————— Konfigurasi GUI ——————
+# Konfigurasi warna dan font
 BG_COLOR      = "#1a1a2e"
 TEXT_COLOR    = "#00f0ff"
 SERVER_COLOR  = "#ffcc00"
@@ -14,11 +14,12 @@ ENTRY_COLOR   = "#222831"
 BUTTON_COLOR  = "#0077ff"
 FONT          = ("Orbitron", 12, "bold")
 
-# —————— Konfigurasi WeatherAPI ——————
+# URL dan API key untuk cuaca
 API_URL = "https://api.weatherapi.com/v1/current.json"
 API_URL = "https://api.weatherapi.com/v1/forecast.json"
 API_KEY = "523ea81486a145f087e45229230706"
 
+# Fungsi untuk mendapatkan cuaca saat ini
 def get_current_weather(location: str) -> str:
     try:
         params = { "key": API_KEY, "q": location, "aqi": "no" }
@@ -39,9 +40,9 @@ def get_current_weather(location: str) -> str:
     except Exception as e:
         return f"Gagal ambil data cuaca: {e}"
 
+# Fungsi untuk mendapatkan cuaca selama 3 hari
 def get_weather_forecast(location: str) -> str:
     try:
-        # Mengambil data cuaca selama 3 hari
         params = { "key": API_KEY, "q": location, "days": 3, "aqi": "no", "alerts": "no" }
         res = requests.get(API_URL, params=params, timeout=5)
         res.raise_for_status()  
@@ -62,6 +63,7 @@ def get_weather_forecast(location: str) -> str:
     except Exception as e:
         return f"Gagal ambil data cuaca: {e}"
 
+#class ServerInterface untuk antarmuka server
 class ServerInterface:
     def __init__(self, master):
         self.master      = master
@@ -108,6 +110,7 @@ class ServerInterface:
         # Start server
         self.start_server()
 
+    # fungsi untuk memulai server
     def start_server(self):
         host = "0.0.0.0"
         port = 12345
@@ -117,6 +120,7 @@ class ServerInterface:
         self.append_text(f"✔ Server berjalan di {host}:{port}", SERVER_COLOR)
         threading.Thread(target=self.accept_clients, daemon=True).start()
 
+    #fungsi untuk menerima koneksi dari client
     def accept_clients(self):
         while True:
             client_sock, addr = self.server.accept()
@@ -126,7 +130,7 @@ class ServerInterface:
                 args=(client_sock,),
                 daemon=True
             ).start()
-
+    #fungsi untuk menangani koneksi dari client
     def handle_client(self, client_sock):
         username = None
         try:
@@ -141,7 +145,6 @@ class ServerInterface:
                 self.append_text(f"👤 {username} berhasil login", CLIENT_COLOR)
                 self.clients.setdefault(username, []).append(client_sock)
 
-                # Kirim pesan selamat datang (hanya username)
                 client_sock.send(f"Selamat Datang, {username}😊🙏\n".encode())
                 instructions = (
                     "\nCara menggunakan aplikasi:\n"
@@ -170,7 +173,7 @@ class ServerInterface:
                     self.append_text(f"🚪 {username} keluar", WARNING_COLOR)
                     break
 
-                # Jika request cuaca, format: "cuaca <lokasi>"
+                # input cuaca, format: "cuaca <lokasi>"
                 if msg.lower().startswith(("cuaca ", "weather ")):
                     _, loc = msg.split(maxsplit=1)
                     resp = get_current_weather(loc)
@@ -178,7 +181,7 @@ class ServerInterface:
                     self.append_text(f"→ Request cuaca: {loc}", SERVER_COLOR)
                     continue
 
-                # Jika request cuaca 3 hari, format: "forecast <lokasi>"
+                # input cuaca 3 hari, format: "forecast <lokasi>"
                 if msg.lower().startswith(("forecast ", "forecast3 ")):
                     _, loc = msg.split(maxsplit=1)
                     resp = get_weather_forecast(loc)
@@ -194,7 +197,7 @@ class ServerInterface:
             self.append_text(f"❌ Error dengan {username}: {e}", WARNING_COLOR)
 
         finally:
-            # Cleanup koneksi
+            # untuk menutup koneksi
             client_sock.close()
             if username in self.clients:
                 self.clients[username] = [
@@ -203,6 +206,7 @@ class ServerInterface:
                 if not self.clients[username]:
                     del self.clients[username]
 
+    # Fungsi untuk mengirim pesan ke semua client
     def broadcast_message(self, message=None, exclude=None):
         # Jika dipicu tombol server
         if message is None:
@@ -219,6 +223,7 @@ class ServerInterface:
                     except Exception as e:
                         self.append_text(f"⚠️ Broadcast error: {e}", WARNING_COLOR)
 
+    # Fungsi untuk menambahkan teks ke area teks
     def append_text(self, msg, color=TEXT_COLOR):
         self.text_area.config(state="normal")
         self.text_area.insert(END, msg + "\n")
@@ -228,6 +233,7 @@ class ServerInterface:
         self.text_area.config(state="disabled")
         self.text_area.yview(END)
 
+#memanggil fungsi utama untuk menjalankan server
 if __name__ == "__main__":
     root = Tk()
     app = ServerInterface(root)
